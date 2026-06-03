@@ -65,12 +65,12 @@ jobs:
       - name: BENCH B - nginx LB (HTTP/1.1 keep-alive)
         run: |
           docker compose -f docker-compose.nginx.yml up -d
-          sleep 3
+          sleep 4
           docker compose -f docker-compose.nginx.yml ps
-          curl -sS http://localhost:19999/ready || (echo "B: ready failed"; exit 1)
+          curl -sS http://localhost:19998/ready || (echo "B: ready failed"; exit 1)
 
           k6 run --summary-export=test/B-nginx-summary.json test/load-stable.js 2>&1 | tail -15
-          python3 test/accuracy.py --url http://localhost:19999 --workers 64 --out test/B-nginx-accuracy.json 2>&1 | tail -15
+          python3 test/accuracy.py --url http://localhost:19998 --workers 64 --out test/B-nginx-accuracy.json 2>&1 | tail -15
 
           docker compose -f docker-compose.nginx.yml down || true
 
