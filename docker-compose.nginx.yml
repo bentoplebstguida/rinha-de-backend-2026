@@ -1,0 +1,51 @@
+version: "3.8"
+
+# Local benchmark stack: nginx LB + 2 API Go (HTTP/1.1 upstream keepalive).
+# This is the architecture from dc01322 but with the Go source rebuilt locally
+# (so the test isn't bound to the prebuilt :go-388a7ca image).
+
+services:
+  api1:
+    image: rinha-fraud:arm64-test
+    platform: linux/arm64
+    container_name: rinha-nginx-api1
+    expose:
+      - "8080"
+    environment:
+      - MODE=api
+    deploy:
+      resources:
+        limits:
+          cpus: "0.40"
+          memory: "140MB"
+
+  api2:
+    image: rinha-fraud:arm64-test
+    platform: linux/arm64
+    container_name: rinha-nginx-api2
+    expose:
+      - "8080"
+    environment:
+      - MODE=api
+    deploy:
+      resources:
+        limits:
+          cpus: "0.40"
+          memory: "140MB"
+
+  nginx:
+    image: nginx:alpine
+    platform: linux/arm64
+    container_name: rinha-nginx-lb
+    ports:
+      - "19999:9999"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+      - api2
+    deploy:
+      resources:
+        limits:
+          cpus: "0.20"
+          memory: "70MB"
