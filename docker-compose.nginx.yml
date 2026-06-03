@@ -39,7 +39,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    platform: linux/arm64
+    platform: linux/amd64
     container_name: rinha-nginx-lb
     ports:
       - "19998:9999"
