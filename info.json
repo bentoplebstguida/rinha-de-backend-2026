@@ -1,0 +1,7 @@
+{
+  "participants": ["Bento"],
+  "social": ["https://github.com/bentoplebstguida"],
+  "source-code-repo": "https://github.com/bentoplebstguida/rinha-de-backend-2026",
+  "stack": ["python", "starlette", "uvicorn", "faiss", "numpy", "nginx"],
+  "open_to_work": false
+}
