@@ -4,6 +4,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to publish"
+        required: false
+        default: "latest"
 
 permissions:
   contents: read
@@ -35,4 +40,4 @@ jobs:
           context: ./api
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/rinha-fraud-api:latest
+          tags: ghcr.io/${{ github.repository_owner }}/rinha-fraud-api:${{ inputs.image_tag || 'latest' }}
