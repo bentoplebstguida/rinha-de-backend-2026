@@ -7,9 +7,6 @@ services:
     container_name: rinha-nginx-api1
     environment:
       - MODE=api
-      - SOCKET_PATH=/sockets/api1.sock
-    volumes:
-      - rinha_nginx_sockets:/sockets
     expose:
       - "8080"
     deploy:
@@ -26,9 +23,6 @@ services:
     container_name: rinha-nginx-api2
     environment:
       - MODE=api
-      - SOCKET_PATH=/sockets/api2.sock
-    volumes:
-      - rinha_nginx_sockets:/sockets
     expose:
       - "8080"
     deploy:
@@ -45,7 +39,6 @@ services:
       - "19998:9999"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - rinha_nginx_sockets:/sockets:ro
     depends_on:
       - api1
       - api2
