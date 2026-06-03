@@ -5,45 +5,51 @@ services:
     image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
     container_name: api1
     platform: linux/amd64
+    environment:
+      - MODE=api
+      - SOCKET_PATH=/sockets/api1.sock
+    volumes:
+      - submission_sockets:/sockets
     deploy:
       resources:
         limits:
-          cpus: "0.40"
-          memory: "140MB"
-    networks:
-      - fraud-net
+          cpus: "0.45"
+          memory: "160MB"
 
   api2:
     image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
     container_name: api2
     platform: linux/amd64
+    environment:
+      - MODE=api
+      - SOCKET_PATH=/sockets/api2.sock
+    volumes:
+      - submission_sockets:/sockets
     deploy:
       resources:
         limits:
-          cpus: "0.40"
-          memory: "140MB"
-    networks:
-      - fraud-net
+          cpus: "0.45"
+          memory: "160MB"
 
-  nginx:
-    image: nginx:alpine
-    container_name: nginx
+  lb:
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
+    container_name: lb
     platform: linux/amd64
     ports:
       - "9999:9999"
+    environment:
+      - MODE=lb
+      - SOCKETS=/sockets/api1.sock,/sockets/api2.sock
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - submission_sockets:/sockets
     deploy:
       resources:
         limits:
-          cpus: "0.20"
-          memory: "70MB"
-    networks:
-      - fraud-net
+          cpus: "0.10"
+          memory: "30MB"
     depends_on:
       - api1
       - api2
 
-networks:
-  fraud-net:
-    driver: bridge
+volumes:
+  submission_sockets:

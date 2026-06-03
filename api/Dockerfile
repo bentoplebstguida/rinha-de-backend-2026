@@ -15,6 +15,6 @@ FROM --platform=$TARGETPLATFORM alpine:3.20
 WORKDIR /app
 COPY --from=builder /out/fraud-api /app/fraud-api
 
-EXPOSE 8080
+EXPOSE 8080 9999
 
 CMD ["/app/fraud-api"]
