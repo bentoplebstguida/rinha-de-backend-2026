@@ -14,14 +14,16 @@ def load(path: str):
 
 
 def fmt_us(v):
-    if v is None: return "n/a"
+    if v is None or v == 0:
+        return "sub-us"
     return f"{v:.1f}us"
 
 
 def safe(metric_dict, key, sub):
     m = metric_dict.get(key)
-    if not m: return None
-    return m.get("values", {}).get(sub)
+    if not m:
+        return None
+    return m.get("values", {}).get(sub) or m.get(sub)
 
 
 def main() -> int:
@@ -35,14 +37,16 @@ def main() -> int:
             print(f"{label}: NO DATA")
             continue
         m = d.get("metrics", {})
-        drops = safe(m, "dropped_iterations", "count") or 0
+        h = m.get("http_req_duration", {})
+        drops = (m.get("dropped_iterations") or {}).get("count") or (m.get("dropped_iterations") or {}).get("values", {}).get("count") or 0
+        rps = (m.get("http_reqs") or {}).get("rate") or (m.get("http_reqs") or {}).get("values", {}).get("rate") or 0
         print(
-            f"{label} k6: p50={fmt_us(safe(m, 'http_req_duration', 'p(50)'))} "
-            f"p90={fmt_us(safe(m, 'http_req_duration', 'p(90)'))} "
-            f"p95={fmt_us(safe(m, 'http_req_duration', 'p(95)'))} "
-            f"p99={fmt_us(safe(m, 'http_req_duration', 'p(99)'))} "
-            f"max={fmt_us(safe(m, 'http_req_duration', 'max'))} "
-            f"rps={(safe(m, 'http_reqs', 'rate') or 0):.1f} "
+            f"{label} k6: p50={fmt_us(h.get('p(50)'))} "
+            f"p90={fmt_us(h.get('p(90)'))} "
+            f"p95={fmt_us(h.get('p(95)'))} "
+            f"p99={fmt_us(h.get('p(99)'))} "
+            f"max={fmt_us(h.get('max'))} "
+            f"rps={rps:.1f} "
             f"drops={drops}"
         )
     for label, _, ap in rows:

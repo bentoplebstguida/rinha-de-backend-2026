@@ -6,11 +6,11 @@ export const options = {
   scenarios: {
     stable: {
       executor: 'constant-arrival-rate',
-      rate: 3000,
+      rate: 5000,
       timeUnit: '1s',
-      duration: '30s',
-      preAllocatedVUs: 100,
-      maxVUs: 400,
+      duration: '20s',
+      preAllocatedVUs: 200,
+      maxVUs: 600,
     },
   },
   thresholds: {

@@ -2,9 +2,11 @@ version: "3.8"
 
 services:
   api1:
-    image: ghcr.io/bentoplebstguida/rinha-fraud-api:go-388a7ca
+    build:
+      context: ./api
+      platforms:
+        - linux/amd64
     container_name: api1
-    platform: linux/amd64
     environment:
       - MODE=api
     deploy:
@@ -16,9 +18,11 @@ services:
       - fraud-net
 
   api2:
-    image: ghcr.io/bentoplebstguida/rinha-fraud-api:go-388a7ca
+    build:
+      context: ./api
+      platforms:
+        - linux/amd64
     container_name: api2
-    platform: linux/amd64
     environment:
       - MODE=api
     deploy:
@@ -31,8 +35,8 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: nginx
     platform: linux/amd64
+    container_name: nginx
     ports:
       - "9999:9999"
     volumes:
