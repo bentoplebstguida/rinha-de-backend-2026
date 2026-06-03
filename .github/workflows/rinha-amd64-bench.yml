@@ -48,12 +48,19 @@ jobs:
           docker compose -f docker-compose.nginx.yml ps
           curl -sS -m 3 http://localhost:19998/ready || (echo "ready failed"; docker compose -f docker-compose.nginx.yml logs; exit 1)
 
-          cd test
           echo "--- k6 official ramp (matches Rinha engine) ---"
+          cd test
           k6 run --summary-export=k6-summary-export.json rinha-official.js 2>&1 | tail -40
 
+          # handleSummary writes to 'test/results.json' relative to k6's CWD
+          if [ -f test/results.json ]; then
+            mv test/results.json results.json
+            ls -la results.json
+          fi
+          cd ..
+
           echo "--- official results.json ---"
-          cat results.json 2>/dev/null || cat test/results.json 2>/dev/null
+          cat test/results.json 2>/dev/null
 
           docker compose -f docker-compose.nginx.yml down || true
 
