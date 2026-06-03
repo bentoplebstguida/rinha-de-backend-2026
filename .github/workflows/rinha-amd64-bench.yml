@@ -51,16 +51,13 @@ jobs:
           echo "--- k6 official ramp (matches Rinha engine) ---"
           cd test
           k6 run --summary-export=k6-summary-export.json rinha-official.js 2>&1 | tail -40
-
-          # handleSummary writes to 'test/results.json' relative to k6's CWD
-          if [ -f test/results.json ]; then
-            mv test/results.json results.json
-            ls -la results.json
-          fi
           cd ..
 
-          echo "--- official results.json ---"
-          cat test/results.json 2>/dev/null
+          echo "--- build results.json from k6 summary ---"
+          python3 test/build-results.py test/k6-summary-export.json test/results.json
+
+          echo "--- cat results.json ---"
+          cat test/results.json
 
           docker compose -f docker-compose.nginx.yml down || true
 
