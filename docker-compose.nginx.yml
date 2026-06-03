@@ -6,8 +6,10 @@ version: "3.8"
 
 services:
   api1:
-    image: rinha-fraud:arm64-test
-    platform: linux/arm64
+    build:
+      context: ./api
+      platforms:
+        - linux/amd64
     container_name: rinha-nginx-api1
     expose:
       - "8080"
@@ -20,8 +22,10 @@ services:
           memory: "140MB"
 
   api2:
-    image: rinha-fraud:arm64-test
-    platform: linux/arm64
+    build:
+      context: ./api
+      platforms:
+        - linux/amd64
     container_name: rinha-nginx-api2
     expose:
       - "8080"

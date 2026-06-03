@@ -2,6 +2,7 @@ import http from 'k6/http';
 import { check } from 'k6';
 
 export const options = {
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(50)', 'p(90)', 'p(95)', 'p(99)'],
   scenarios: {
     stable: {
       executor: 'constant-arrival-rate',
