@@ -7,6 +7,8 @@ on:
     paths:
       - 'api/**'
       - 'docker-compose.yml'
+      - 'docker-compose.local.yml'
+      - 'docker-compose.nginx.yml'
       - 'nginx/**'
       - 'test/**'
       - '.github/workflows/rinha-amd64-bench.yml'
@@ -26,15 +28,14 @@ jobs:
           sudo apt-get clean
           df -h /
 
-      - name: Install k6
+      - name: Install k6 v2.0.0
         run: |
-          curl -sSL -o /tmp/k6.zip "https://github.com/grafana/k6/releases/download/v0.50.0/k6-v0.50.0-linux-amd64.zip"
-          sudo apt-get install -y unzip
-          unzip -o /tmp/k6.zip -d /tmp/k6
-          sudo mv /tmp/k6/k6-v0.50.0-linux-amd64/k6 /usr/local/bin/k6
+          curl -sSL -o /tmp/k6.tar.gz "https://github.com/grafana/k6/releases/download/v2.0.0/k6-v2.0.0-linux-amd64.tar.gz"
+          tar -xzf /tmp/k6.tar.gz -C /tmp
+          sudo mv /tmp/k6-v2.0.0-linux-amd64/k6 /usr/local/bin/k6
           k6 version
 
-      - name: Install Python accuracy harness
+      - name: Install Python accuracy harness deps
         run: |
           python3 -m pip install --quiet --break-system-packages requests 2>&1 | tail -3
 
@@ -43,25 +44,60 @@ jobs:
           curl -sSL -o /tmp/rinha-test-data.json \
             "https://raw.githubusercontent.com/zanfranceschi/rinha-de-backend-2026/main/test/test-data.json"
           ls -la /tmp/rinha-test-data.json
-          head -c 200 /tmp/rinha-test-data.json
 
-      - name: Start stack (LB Go + 2 APIs via Unix sockets)
+      - name: Build api image (single, reused for both variants)
         run: |
-          docker compose -f docker-compose.local.yml up -d --build
+          docker compose -f docker-compose.local.yml build api1 api2 lb
+          docker compose -f docker-compose.nginx.yml build || true
+
+      - name: BENCH A - LB Go (Unix sockets) baseline
+        run: |
+          docker compose -f docker-compose.local.yml up -d
           sleep 3
           docker compose -f docker-compose.local.yml ps
-          curl -sS http://localhost:19999/ready || echo "READY_FAILED"
+          curl -sS http://localhost:19999/ready || (echo "A: ready failed"; exit 1)
 
-      - name: k6 load test
+          cd test
+          k6 run --summary-export=A-lbgo-summary.json load-stable.js 2>&1 | tail -15
+          python3 ../test/accuracy.py --url http://localhost:19999 --workers 64 --out A-lbgo-accuracy.json 2>&1 | tail -15
+
+          docker compose -f docker-compose.local.yml down
+
+      - name: BENCH B - nginx LB (HTTP/1.1 keep-alive)
+        run: |
+          docker compose -f docker-compose.nginx.yml up -d
+          sleep 3
+          docker compose -f docker-compose.nginx.yml ps
+          curl -sS http://localhost:19999/ready || (echo "B: ready failed"; exit 1)
+
+          cd test
+          k6 run --summary-export=B-nginx-summary.json load-stable.js 2>&1 | tail -15
+          python3 ../test/accuracy.py --url http://localhost:19999 --workers 64 --out B-nginx-accuracy.json 2>&1 | tail -15
+
+          docker compose -f docker-compose.nginx.yml down
+
+      - name: Compare results
+        if: always()
         run: |
           cd test
-          k6 run --summary-export=baseline-summary.json load.js 2>&1 | tail -60
-          echo "---SUMMARY---"
-          cat baseline-summary.json | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['metrics']; print('p50:', m['http_req_duration']['values']['p(50)']); print('p90:', m['http_req_duration']['values']['p(90)']); print('p95:', m['http_req_duration']['values']['p(95)']); print('p99:', m['http_req_duration']['values']['p(99)']); print('max:', m['http_req_duration']['values']['max']); print('failed:', m['http_req_failed']['values']['rate']); print('rps:', m['http_reqs']['values']['rate'])"
+          python3 -c "
+import json, sys, os
 
-      - name: Accuracy against official test data
-        run: |
-          python3 test/accuracy.py --url http://localhost:19999 --workers 64 --out test/accuracy-amd64.json 2>&1 | tail -20
+def load(path):
+    if not os.path.exists(path): return None
+    with open(path) as f: return json.load(f)
+
+for label, p in [('A-LB-Go', 'A-lbgo-summary.json'), ('B-nginx', 'B-nginx-summary.json')]:
+    d = load(p)
+    if not d: print(f'{label}: NO DATA'); continue
+    m = d['metrics']
+    print(f'{label}: p50={m[\"http_req_duration\"][\"values\"][\"p(50)\"]:.1f}us p90={m[\"http_req_duration\"][\"values\"][\"p(90)\"]:.1f}us p95={m[\"http_req_duration\"][\"values\"][\"p(95)\"]:.1f}us p99={m[\"http_req_duration\"][\"values\"][\"p(99)\"]:.1f}us max={m[\"http_req_duration\"][\"values\"][\"max\"]:.1f}us rps={m[\"http_reqs\"][\"values\"][\"rate\"]:.1f} drops={m.get(\"dropped_iterations\",{}).get(\"values\",{}).get(\"count\",0)}')
+for label, p in [('A-LB-Go', 'A-lbgo-accuracy.json'), ('B-nginx', 'B-nginx-accuracy.json')]:
+    d = load(p)
+    if not d: print(f'{label} accuracy: NO DATA'); continue
+    s = d['summary']
+    print(f'{label} accuracy: tp={s[\"confusion\"][\"tp\"]} tn={s[\"confusion\"][\"tn\"]} fp={s[\"confusion\"][\"fp\"]} fn={s[\"confusion\"][\"fn\"]} err={s[\"confusion\"][\"err\"]} p99={s[\"p99_ms\"]:.2f}ms')
+"
 
       - name: Upload artifacts
         if: always()
@@ -69,10 +105,5 @@ jobs:
         with:
           name: bench-results
           path: |
-            test/baseline-summary.json
-            test/accuracy-amd64.json
-
-      - name: Stop stack
-        if: always()
-        run: |
-          docker compose -f docker-compose.local.yml down
+            test/A-*.json
+            test/B-*.json
