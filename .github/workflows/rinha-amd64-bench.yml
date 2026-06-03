@@ -1,0 +1,78 @@
+name: rinha-amd64-bench
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [IaSlop, main]
+    paths:
+      - 'api/**'
+      - 'docker-compose.yml'
+      - 'nginx/**'
+      - 'test/**'
+      - '.github/workflows/rinha-amd64-bench.yml'
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          df -h /
+
+      - name: Install k6
+        run: |
+          curl -sSL -o /tmp/k6.zip "https://github.com/grafana/k6/releases/download/v0.50.0/k6-v0.50.0-linux-amd64.zip"
+          sudo apt-get install -y unzip
+          unzip -o /tmp/k6.zip -d /tmp/k6
+          sudo mv /tmp/k6/k6-v0.50.0-linux-amd64/k6 /usr/local/bin/k6
+          k6 version
+
+      - name: Install Python accuracy harness
+        run: |
+          python3 -m pip install --quiet --break-system-packages requests 2>&1 | tail -3
+
+      - name: Download official test data
+        run: |
+          curl -sSL -o /tmp/rinha-test-data.json \
+            "https://raw.githubusercontent.com/zanfranceschi/rinha-de-backend-2026/main/test/test-data.json"
+          ls -la /tmp/rinha-test-data.json
+          head -c 200 /tmp/rinha-test-data.json
+
+      - name: Start stack (LB Go + 2 APIs via Unix sockets)
+        run: |
+          docker compose -f docker-compose.local.yml up -d --build
+          sleep 3
+          docker compose -f docker-compose.local.yml ps
+          curl -sS http://localhost:19999/ready || echo "READY_FAILED"
+
+      - name: k6 load test
+        run: |
+          cd test
+          k6 run --summary-export=baseline-summary.json load.js 2>&1 | tail -60
+          echo "---SUMMARY---"
+          cat baseline-summary.json | python3 -c "import json,sys; d=json.load(sys.stdin); m=d['metrics']; print('p50:', m['http_req_duration']['values']['p(50)']); print('p90:', m['http_req_duration']['values']['p(90)']); print('p95:', m['http_req_duration']['values']['p(95)']); print('p99:', m['http_req_duration']['values']['p(99)']); print('max:', m['http_req_duration']['values']['max']); print('failed:', m['http_req_failed']['values']['rate']); print('rps:', m['http_reqs']['values']['rate'])"
+
+      - name: Accuracy against official test data
+        run: |
+          python3 test/accuracy.py --url http://localhost:19999 --workers 64 --out test/accuracy-amd64.json 2>&1 | tail -20
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: |
+            test/baseline-summary.json
+            test/accuracy-amd64.json
+
+      - name: Stop stack
+        if: always()
+        run: |
+          docker compose -f docker-compose.local.yml down
