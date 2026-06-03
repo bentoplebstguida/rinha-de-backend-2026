@@ -8,11 +8,8 @@ services:
         - linux/amd64
     container_name: api1
     environment:
-      - INDEX_PATH=/app/data/index.faiss
-      - LABELS_PATH=/app/data/labels.npy
       - MCC_PATH=/app/data/mcc_risk.json
       - NORM_PATH=/app/data/normalization.json
-      - NPROBE=8
     deploy:
       resources:
         limits:
@@ -28,11 +25,8 @@ services:
         - linux/amd64
     container_name: api2
     environment:
-      - INDEX_PATH=/app/data/index.faiss
-      - LABELS_PATH=/app/data/labels.npy
       - MCC_PATH=/app/data/mcc_risk.json
       - NORM_PATH=/app/data/normalization.json
-      - NPROBE=8
     deploy:
       resources:
         limits:

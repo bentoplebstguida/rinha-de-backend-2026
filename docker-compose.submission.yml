@@ -5,12 +5,6 @@ services:
     image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
     container_name: api1
     platform: linux/amd64
-    environment:
-      - INDEX_PATH=/app/data/index.faiss
-      - LABELS_PATH=/app/data/labels.npy
-      - MCC_PATH=/app/data/mcc_risk.json
-      - NORM_PATH=/app/data/normalization.json
-      - NPROBE=8
     deploy:
       resources:
         limits:
@@ -23,12 +17,6 @@ services:
     image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
     container_name: api2
     platform: linux/amd64
-    environment:
-      - INDEX_PATH=/app/data/index.faiss
-      - LABELS_PATH=/app/data/labels.npy
-      - MCC_PATH=/app/data/mcc_risk.json
-      - NORM_PATH=/app/data/normalization.json
-      - NPROBE=8
     deploy:
       resources:
         limits:
