@@ -3,7 +3,7 @@ Rinha de Backend 2026 - Fraud Detection API
 
 Stack:
   - starlette + uvicorn (minimal ASGI overhead)
-  - faiss-cpu IVF SQ8 (pre-trained index, low-latency search)
+  - faiss-cpu IVFPQ (pre-trained index, sub-ms search)
   - orjson (fast JSON)
   - numpy (vector ops)
   - uvloop + httptools (low-level event loop & HTTP parser)
@@ -42,7 +42,7 @@ NORM_PATH = os.environ.get("NORM_PATH", "/app/data/normalization.json")
 K_NEIGHBORS = 5
 THRESHOLD = 0.6
 VEC_DIM = 14
-NPROBE = int(os.environ.get("NPROBE", "32"))
+NPROBE = int(os.environ.get("NPROBE", "8"))
 
 # ── Globals (populated on startup) ──────────────────────────────────────
 index: faiss.Index | None = None

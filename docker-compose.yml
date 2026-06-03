@@ -12,7 +12,7 @@ services:
       - LABELS_PATH=/app/data/labels.npy
       - MCC_PATH=/app/data/mcc_risk.json
       - NORM_PATH=/app/data/normalization.json
-      - NPROBE=32
+      - NPROBE=8
     deploy:
       resources:
         limits:
@@ -32,7 +32,7 @@ services:
       - LABELS_PATH=/app/data/labels.npy
       - MCC_PATH=/app/data/mcc_risk.json
       - NORM_PATH=/app/data/normalization.json
-      - NPROBE=32
+      - NPROBE=8
     deploy:
       resources:
         limits:
