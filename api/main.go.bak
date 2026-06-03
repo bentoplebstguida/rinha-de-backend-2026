@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -454,38 +453,30 @@ func denied(vec *[vecDim]float64) bool {
 	return values[node] == 1
 }
 
-// Pre-built HTTP responses for zero-allocation hot path.
-var (
-	respHeader  = []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 31\r\nConnection: keep-alive\r\n\r\n")
-	respHeaderF = []byte("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 32\r\nConnection: keep-alive\r\n\r\n")
-	respApprove = []byte(`{"approved":true,"fraud_score":0}`)
-	respDeny    = []byte(`{"approved":false,"fraud_score":1}`)
-	respReady   = []byte(`{"status":"ok"}`)
-)
-
 func ready(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write(respReady)
+	_, _ = w.Write([]byte(`{"status":"ok"}`))
 }
 
 func fraudScore(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(respApprove)
+		_, _ = w.Write([]byte(`{"approved":true,"fraud_score":0}`))
 		return
 	}
 	var vec [vecDim]float64
 	if !vectorizeBytes(body, &vec) {
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write(respApprove)
+		_, _ = w.Write([]byte(`{"approved":true,"fraud_score":0}`))
 		return
 	}
+	d := denied(&vec)
 	w.Header().Set("Content-Type", "application/json")
-	if denied(&vec) {
-		_, _ = w.Write(respDeny)
+	if d {
+		_, _ = w.Write([]byte(`{"approved":false,"fraud_score":1}`))
 	} else {
-		_, _ = w.Write(respApprove)
+		_, _ = w.Write([]byte(`{"approved":true,"fraud_score":0}`))
 	}
 }
 
@@ -551,11 +542,6 @@ func runLB() {
 }
 
 func main() {
-	// Pin to 2 OS threads: matches the 2 API containers in docker-compose.
-	// Avoids scheduler contention when many requests hit multiple cores.
-	if os.Getenv("GOMAXPROCS") == "" {
-		runtime.GOMAXPROCS(2)
-	}
 	switch os.Getenv("MODE") {
 	case "lb":
 		runLB()
