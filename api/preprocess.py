@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Preprocess references.json.gz into a pre-trained FAISS IVFPQ index + labels.npy.
+Preprocess references.json.gz into a pre-trained FAISS index + labels.npy.
 
 Output:
   - vectors.npy   (float32, Nx14) — raw vectors (kept for debug, not needed at runtime)
   - labels.npy    (uint8,  N)     — 1 = fraud, 0 = legit
-  - index.faiss                 — pre-trained FAISS IndexIVFPQ
+  - index.faiss                 — pre-trained FAISS index
 
 Usage:
   python preprocess.py references.json.gz /app/data
@@ -26,8 +26,10 @@ import numpy as np
 
 VEC_DIM = 14
 
-# FAISS IVFPQ params — chosen for memory budget (~50MB index) and recall.
-# M must divide VEC_DIM exactly; 14 dimensions -> 7 subquantizers.
+# FAISS params. `sq8` is the default candidate because it keeps each
+# dimension independently quantized and should be more accurate than PQ
+# while staying inside the memory budget.
+INDEX_KIND = os.environ.get("INDEX_KIND", "sq8").lower()
 NLIST = 1024
 M = 7
 NBITS = 8
@@ -83,14 +85,23 @@ def preprocess(input_path: str, output_dir: str) -> None:
     del vectors
     gc.collect()
 
-    # Train FAISS IVFPQ index
-    print(
-        f"[preprocess] Training FAISS IVFPQ (nlist={NLIST}, M={M}, nbits={NBITS})...",
-        flush=True,
-    )
+    # Train FAISS index
+    print(f"[preprocess] Training FAISS {INDEX_KIND} (nlist={NLIST})...", flush=True)
     t0 = time.time()
     quantizer = faiss.IndexFlatL2(VEC_DIM)
-    index = faiss.IndexIVFPQ(quantizer, VEC_DIM, NLIST, M, NBITS, faiss.METRIC_L2)
+    if INDEX_KIND == "ivfpq":
+        # M must divide VEC_DIM exactly; 14 dimensions -> 7 subquantizers.
+        index = faiss.IndexIVFPQ(quantizer, VEC_DIM, NLIST, M, NBITS, faiss.METRIC_L2)
+    elif INDEX_KIND == "sq8":
+        index = faiss.IndexIVFScalarQuantizer(
+            quantizer,
+            VEC_DIM,
+            NLIST,
+            faiss.ScalarQuantizer.QT_8bit,
+            faiss.METRIC_L2,
+        )
+    else:
+        raise ValueError(f"Unsupported INDEX_KIND={INDEX_KIND!r}")
 
     # Reload vectors for training/add
     vectors = np.load(vectors_path)
@@ -100,8 +111,8 @@ def preprocess(input_path: str, output_dir: str) -> None:
     index.add(vectors)
     print(f"[preprocess] Index built in {time.time() - t0:.1f}s", flush=True)
 
-    # Set sane default nprobe
-    index.nprobe = 8
+    # Runtime can override this through NPROBE.
+    index.nprobe = 32
 
     index_path = os.path.join(output_dir, "index.faiss")
     faiss.write_index(index, index_path)
@@ -115,7 +126,7 @@ def preprocess(input_path: str, output_dir: str) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Preprocess references.json.gz into FAISS IVFPQ + labels"
+        description="Preprocess references.json.gz into FAISS index + labels"
     )
     parser.add_argument("input", help="Path to references.json.gz")
     parser.add_argument("output_dir", help="Output directory for index + npy")

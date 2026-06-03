@@ -2,7 +2,7 @@
 # Force amd64 for the rinha runner (Mac Mini Late 2014).
 # `docker buildx build --platform linux/amd64` is also fine.
 
-# ── Stage 1: Builder — download data, train FAISS IVFPQ index ───────────
+# ── Stage 1: Builder — download data, train FAISS index ───────────
 FROM --platform=linux/amd64 python:3.12-slim AS builder
 
 WORKDIR /build
@@ -27,7 +27,7 @@ ADD https://raw.githubusercontent.com/zanfranceschi/rinha-de-backend-2026/main/r
 ADD https://raw.githubusercontent.com/zanfranceschi/rinha-de-backend-2026/main/resources/normalization.json /build/data/
 ADD https://github.com/zanfranceschi/rinha-de-backend-2026/raw/main/resources/references.json.gz /build/data/
 
-# Preprocess: references.json.gz → labels.npy + vectors.npy + index.faiss (pre-trained IVFPQ)
+# Preprocess: references.json.gz → labels.npy + vectors.npy + index.faiss
 COPY preprocess.py /build/
 RUN python /build/preprocess.py /build/data/references.json.gz /build/data \
     && rm -f /build/data/references.json.gz /build/data/vectors.npy
