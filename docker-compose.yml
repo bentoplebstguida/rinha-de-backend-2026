@@ -2,11 +2,9 @@ version: "3.8"
 
 services:
   api1:
-    build:
-      context: ./api
-      platforms:
-        - linux/amd64
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
     container_name: api1
+    platform: linux/amd64
     environment:
       - INDEX_PATH=/app/data/index.faiss
       - LABELS_PATH=/app/data/labels.npy
@@ -22,11 +20,9 @@ services:
       - fraud-net
 
   api2:
-    build:
-      context: ./api
-      platforms:
-        - linux/amd64
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:latest
     container_name: api2
+    platform: linux/amd64
     environment:
       - INDEX_PATH=/app/data/index.faiss
       - LABELS_PATH=/app/data/labels.npy
@@ -44,6 +40,7 @@ services:
   nginx:
     image: nginx:alpine
     container_name: nginx
+    platform: linux/amd64
     ports:
       - "9999:9999"
     volumes:
