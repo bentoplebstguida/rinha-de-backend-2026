@@ -35,58 +35,33 @@ jobs:
           sudo mv /tmp/k6-v2.0.0-linux-amd64/k6 /usr/local/bin/k6
           k6 version
 
-      - name: Install Python accuracy harness deps
+      - name: Download official test data (54,100 labeled entries)
         run: |
-          python3 -m pip install --quiet --break-system-packages requests 2>&1 | tail -3
-
-      - name: Download official test data
-        run: |
-          curl -sSL -o /tmp/rinha-test-data.json \
+          curl -sSL -o test/test-data.json \
             "https://raw.githubusercontent.com/zanfranceschi/rinha-de-backend-2026/main/test/test-data.json"
-          ls -la /tmp/rinha-test-data.json
+          ls -la test/test-data.json
 
-      - name: Build api image (single, reused for both variants)
+      - name: BENCH - nginx LB + 2 API Go (matches submission architecture)
         run: |
-          docker compose -f docker-compose.local.yml build api1 api2 lb
-          docker compose -f docker-compose.nginx.yml build || true
-
-      - name: BENCH A - LB Go (Unix sockets) baseline
-        run: |
-          docker compose -f docker-compose.local.yml up -d
-          sleep 3
-          docker compose -f docker-compose.local.yml ps
-          curl -sS http://localhost:19999/ready || (echo "A: ready failed"; exit 1)
-
-          k6 run --summary-export=test/A-lbgo-summary.json test/load-stable.js 2>&1 | tail -15
-          python3 test/accuracy.py --url http://localhost:19999 --workers 64 --out test/A-lbgo-accuracy.json 2>&1 | tail -15
-
-          docker compose -f docker-compose.local.yml down || true
-
-      - name: BENCH B - nginx LB (HTTP/1.1 keep-alive)
-        run: |
-          docker compose -f docker-compose.nginx.yml up -d
-          sleep 5
+          docker compose -f docker-compose.nginx.yml up -d --build
+          sleep 4
           docker compose -f docker-compose.nginx.yml ps
-          docker compose -f docker-compose.nginx.yml logs --no-color || true
-          echo "---direct curl---"
-          curl -sS -m 3 http://localhost:19998/ready || (echo "B: ready failed"; exit 1)
+          curl -sS -m 3 http://localhost:19998/ready || (echo "ready failed"; docker compose -f docker-compose.nginx.yml logs; exit 1)
 
-          k6 run --summary-export=test/B-nginx-summary.json test/load-stable.js 2>&1 | tail -15
-          python3 test/accuracy.py --url http://localhost:19998 --workers 64 --out test/B-nginx-accuracy.json 2>&1 | tail -15
+          cd test
+          echo "--- k6 official ramp (matches Rinha engine) ---"
+          k6 run --summary-export=k6-summary-export.json rinha-official.js 2>&1 | tail -40
+
+          echo "--- official results.json ---"
+          cat results.json 2>/dev/null || cat test/results.json 2>/dev/null
 
           docker compose -f docker-compose.nginx.yml down || true
 
-      - name: Compare results
-        if: always()
-        run: |
-          cd test
-          python3 compare.py
-
-      - name: Upload artifacts
+      - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: bench-results
+          name: rinha-results
           path: |
-            test/A-*.json
-            test/B-*.json
+            test/results.json
+            test/k6-summary-export.json
