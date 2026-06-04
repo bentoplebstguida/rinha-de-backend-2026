@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -551,11 +552,15 @@ func runLB() {
 }
 
 func main() {
-	// Pin to 2 OS threads: matches the 2 API containers in docker-compose.
-	// Avoids scheduler contention when many requests hit multiple cores.
+	// Optimizations per Grok 4.3 audit (2026-06-03):
+	// - GOMAXPROCS=1: match Docker CPU limit (0.40 CPU per API), avoid scheduler noise.
+	// - GOGC=200 (env): reduce GC pressure under 1 CPU.
+	// - SetMemoryLimit(280MB): cap heap to fit within 350MB total budget.
 	if os.Getenv("GOMAXPROCS") == "" {
-		runtime.GOMAXPROCS(2)
+		runtime.GOMAXPROCS(1)
 	}
+	debug.SetGCPercent(200)
+	debug.SetMemoryLimit(280 << 20)
 	switch os.Getenv("MODE") {
 	case "lb":
 		runLB()

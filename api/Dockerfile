@@ -8,7 +8,7 @@ ARG TARGETOS
 ARG TARGETARCH
 COPY go.mod ./
 COPY main.go ./
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -ldflags="-s -w" -o /out/fraud-api .
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} go build -tags=netgo -ldflags="-s -w" -o /out/fraud-api .
 
 FROM --platform=$TARGETPLATFORM alpine:3.20
 
