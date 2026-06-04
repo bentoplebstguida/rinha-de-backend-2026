@@ -2,10 +2,8 @@ version: "3.8"
 
 services:
   api1:
-    build:
-      context: ./api
-      platforms:
-        - linux/amd64
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:optim-6000-e724a2e
+    platform: linux/amd64
     container_name: api1
     expose:
       - "8080"
@@ -20,10 +18,8 @@ services:
       - fraud-net
 
   api2:
-    build:
-      context: ./api
-      platforms:
-        - linux/amd64
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:optim-6000-e724a2e
+    platform: linux/amd64
     container_name: api2
     expose:
       - "8080"
