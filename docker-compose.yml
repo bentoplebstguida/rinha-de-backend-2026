@@ -7,15 +7,14 @@ services:
       platforms:
         - linux/amd64
     container_name: api1
+    network_mode: host
     environment:
       - MODE=api
     deploy:
       resources:
         limits:
-          cpus: "0.40"
+          cpus: "0.50"
           memory: "140MB"
-    networks:
-      - fraud-net
 
   api2:
     build:
@@ -23,22 +22,20 @@ services:
       platforms:
         - linux/amd64
     container_name: api2
+    network_mode: host
     environment:
       - MODE=api
     deploy:
       resources:
         limits:
-          cpus: "0.40"
+          cpus: "0.50"
           memory: "140MB"
-    networks:
-      - fraud-net
 
   nginx:
     image: nginx:alpine
     platform: linux/amd64
     container_name: nginx
-    ports:
-      - "9999:9999"
+    network_mode: host
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     deploy:
@@ -46,12 +43,6 @@ services:
         limits:
           cpus: "0.20"
           memory: "70MB"
-    networks:
-      - fraud-net
     depends_on:
       - api1
       - api2
-
-networks:
-  fraud-net:
-    driver: bridge
