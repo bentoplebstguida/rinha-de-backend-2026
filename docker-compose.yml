@@ -12,7 +12,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.45"
+          cpus: "0.475"
           memory: "140MB"
     networks:
       - fraud-net
@@ -28,7 +28,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.45"
+          cpus: "0.475"
           memory: "140MB"
     networks:
       - fraud-net
@@ -44,7 +44,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.10"
+          cpus: "0.05"
           memory: "70MB"
     networks:
       - fraud-net
