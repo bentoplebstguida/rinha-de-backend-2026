@@ -93,12 +93,12 @@ jobs:
           curl -sS -m 3 http://localhost:19998/ready || (echo "ready failed"; docker compose -f docker-compose.nginx-c.yml logs; exit 1)
 
           echo "--- k6 official ramp (matches Rinha engine) ---"
-          k6 run --summary-export=test/k6-summary-export.json test/rinha-official.js 2>&1 | tail -40
+          k6 run --summary-export=test/k6-summary-export.json test/rinha-c-official.js 2>&1 | tail -40
 
-          echo "--- build results.json from k6 summary ---"
-          python3 test/build-results.py test/k6-summary-export.json test/results.json
+          echo "--- copy handleSummary output to test/results.json ---"
+          cp results.json test/results.json 2>/dev/null || python3 test/build-results.py test/k6-summary-export.json test/results.json
 
-          echo "--- cat results.json ---"
+          echo "--- cat test/results.json ---"
           cat test/results.json
 
           docker compose -f docker-compose.nginx-c.yml down || true
