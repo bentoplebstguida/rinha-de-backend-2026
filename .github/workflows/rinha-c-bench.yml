@@ -1,0 +1,102 @@
+name: rinha-c-bench
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [c-submission, IaSlop, main]
+    paths:
+      - 'c-src/**'
+      - 'docker-compose.nginx-c.yml'
+      - '.github/workflows/rinha-c-bench.yml'
+
+jobs:
+  build-and-bench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Free disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo apt-get clean
+          df -h /
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract short SHA for image tag
+        id: meta
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+          echo "image_tag=c-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "image=ghcr.io/bentoplebstguida/rinha-fraud-api:c-${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build C image (linux/amd64)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./c-src
+          file: ./c-src/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ghcr.io/bentoplebstguida/rinha-fraud-api:${{ steps.meta.outputs.image_tag }}
+            ghcr.io/bentoplebstguida/rinha-fraud-api:c-latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Install k6 v2.0.0
+        run: |
+          curl -sSL -o /tmp/k6.tar.gz "https://github.com/grafana/k6/releases/download/v2.0.0/k6-v2.0.0-linux-amd64.tar.gz"
+          tar -xzf /tmp/k6.tar.gz -C /tmp
+          sudo mv /tmp/k6-v2.0.0-linux-amd64/k6 /usr/local/bin/k6
+          k6 version
+
+      - name: Download official test data (54,100 labeled entries)
+        run: |
+          curl -sSL -o test/test-data.json \
+            "https://raw.githubusercontent.com/zanfranceschi/rinha-de-backend-2026/main/test/test-data.json"
+          ls -la test/test-data.json
+
+      - name: BENCH - nginx LB + 2x C API (matches submission architecture)
+        run: |
+          docker compose -f docker-compose.nginx-c.yml up -d
+          sleep 4
+          docker compose -f docker-compose.nginx-c.yml ps
+          curl -sS -m 3 http://localhost:19998/ready || (echo "ready failed"; docker compose -f docker-compose.nginx-c.yml logs; exit 1)
+
+          echo "--- k6 official ramp (matches Rinha engine) ---"
+          cd test
+          k6 run --summary-export=k6-summary-export.json rinha-official.js 2>&1 | tail -40
+          cd ..
+
+          echo "--- build results.json from k6 summary ---"
+          python3 test/build-results.py test/k6-summary-export.json test/results.json
+
+          echo "--- cat results.json ---"
+          cat test/results.json
+
+          docker compose -f docker-compose.nginx-c.yml down || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rinha-c-results
+          path: |
+            test/results.json
+            test/k6-summary-export.json
