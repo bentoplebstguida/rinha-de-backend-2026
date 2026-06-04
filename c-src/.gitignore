@@ -1,0 +1,5 @@
+fraud-api
+fraud-api-static
+test_runner
+*.o
+*.bak
