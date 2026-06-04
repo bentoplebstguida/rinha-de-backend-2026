@@ -59,6 +59,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Re-tag image locally for compose
+        run: |
+          docker tag ghcr.io/bentoplebstguida/rinha-fraud-api:${{ steps.meta.outputs.image_tag }} rinha-c:c-local
+          docker images | grep rinha-c
+
       - name: Install k6 v2.0.0
         run: |
           curl -sSL -o /tmp/k6.tar.gz "https://github.com/grafana/k6/releases/download/v2.0.0/k6-v2.0.0-linux-amd64.tar.gz"

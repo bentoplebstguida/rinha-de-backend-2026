@@ -1,6 +1,6 @@
 services:
   api1:
-    image: rinha-c:c-20260604-0529
+    image: rinha-c:c-local
     platform: linux/amd64
     container_name: rinha-nginx-c-api1
     expose:
@@ -12,7 +12,7 @@ services:
           memory: "140MB"
 
   api2:
-    image: rinha-c:c-20260604-0529
+    image: rinha-c:c-local
     platform: linux/amd64
     container_name: rinha-nginx-c-api2
     expose:
