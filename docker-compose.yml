@@ -2,47 +2,40 @@ version: "3.8"
 
 services:
   api1:
-    build:
-      context: ./api
-      platforms:
-        - linux/amd64
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:optim-6000-e724a2e
+    platform: linux/amd64
     container_name: api1
+    expose:
+      - "8080"
     environment:
-      - INDEX_PATH=/app/data/index.faiss
-      - LABELS_PATH=/app/data/labels.npy
-      - MCC_PATH=/app/data/mcc_risk.json
-      - NORM_PATH=/app/data/normalization.json
-      - NPROBE=8
+      - MODE=api
     deploy:
       resources:
         limits:
-          cpus: "0.40"
+          cpus: "0.50"
           memory: "140MB"
     networks:
       - fraud-net
 
   api2:
-    build:
-      context: ./api
-      platforms:
-        - linux/amd64
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:optim-6000-e724a2e
+    platform: linux/amd64
     container_name: api2
+    expose:
+      - "8080"
     environment:
-      - INDEX_PATH=/app/data/index.faiss
-      - LABELS_PATH=/app/data/labels.npy
-      - MCC_PATH=/app/data/mcc_risk.json
-      - NORM_PATH=/app/data/normalization.json
-      - NPROBE=8
+      - MODE=api
     deploy:
       resources:
         limits:
-          cpus: "0.40"
+          cpus: "0.50"
           memory: "140MB"
     networks:
       - fraud-net
 
   nginx:
     image: nginx:alpine
+    platform: linux/amd64
     container_name: nginx
     ports:
       - "9999:9999"
