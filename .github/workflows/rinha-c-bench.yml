@@ -46,23 +46,31 @@ jobs:
           echo "image_tag=c-${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "image=ghcr.io/bentoplebstguida/rinha-fraud-api:c-${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Build C image (linux/amd64)
+      - name: Build C image (linux/amd64, load locally)
         uses: docker/build-push-action@v5
         with:
           context: ./c-src
           file: ./c-src/Dockerfile
           platforms: linux/amd64
-          push: ${{ github.event_name == 'push' }}
-          tags: |
-            ghcr.io/bentoplebstguida/rinha-fraud-api:${{ steps.meta.outputs.image_tag }}
-            ghcr.io/bentoplebstguida/rinha-fraud-api:c-latest
+          push: false
+          load: true
+          tags: rinha-c:c-local
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Re-tag image locally for compose
+      - name: Tag for GHCR
+        if: github.event_name == 'push'
         run: |
-          docker tag ghcr.io/bentoplebstguida/rinha-fraud-api:${{ steps.meta.outputs.image_tag }} rinha-c:c-local
+          docker tag rinha-c:c-local ghcr.io/bentoplebstguida/rinha-fraud-api:${{ steps.meta.outputs.image_tag }}
+          docker tag rinha-c:c-local ghcr.io/bentoplebstguida/rinha-fraud-api:c-latest
           docker images | grep rinha-c
+
+      - name: Push to GHCR
+        if: github.event_name == 'push'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker push ghcr.io/bentoplebstguida/rinha-fraud-api:${{ steps.meta.outputs.image_tag }}
+          docker push ghcr.io/bentoplebstguida/rinha-fraud-api:c-latest
 
       - name: Install k6 v2.0.0
         run: |
