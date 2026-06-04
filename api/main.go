@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -552,15 +551,10 @@ func runLB() {
 }
 
 func main() {
-	// GOMAXPROCS=1: matches Docker CPU limit (0.40 CPU per API).
-	// GOGC=off: no GC pauses; hot path is zero-allocation, so memory is flat.
+	// Pin to 2 OS threads: matches the 2 API containers in docker-compose.
+	// Avoids scheduler contention when many requests hit multiple cores.
 	if os.Getenv("GOMAXPROCS") == "" {
-		runtime.GOMAXPROCS(1)
-	}
-	// Disable GC for the hot path - the classifier + parser use only stack
-	// memory and pre-allocated response bytes.
-	if os.Getenv("GOGC") == "" {
-		debug.SetGCPercent(-1)
+		runtime.GOMAXPROCS(2)
 	}
 	switch os.Getenv("MODE") {
 	case "lb":
