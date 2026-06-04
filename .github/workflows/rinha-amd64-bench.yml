@@ -3,7 +3,7 @@ name: rinha-amd64-bench
 on:
   workflow_dispatch:
   push:
-    branches: [IaSlop, main]
+    branches: [IaSlop, main, optim-6000]
     paths:
       - 'api/**'
       - 'docker-compose.yml'
