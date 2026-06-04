@@ -39,7 +39,8 @@ jobs:
       - name: Extract short SHA
         id: meta
         run: |
-          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          short_sha="$(git rev-parse --short HEAD)"
+          echo "short_sha=${short_sha}" >> $GITHUB_OUTPUT
           echo "image_tag=optim-6000-${short_sha}" >> $GITHUB_OUTPUT
 
       - name: Build and push Go image
