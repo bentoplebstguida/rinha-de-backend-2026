@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   api1:
-    image: ghcr.io/bentoplebstguida/rinha-fraud-api:optim-6000-e724a2e
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:go-388a7ca
     platform: linux/amd64
     container_name: api1
     expose:
@@ -12,13 +12,13 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.45"
+          cpus: "0.40"
           memory: "140MB"
     networks:
       - fraud-net
 
   api2:
-    image: ghcr.io/bentoplebstguida/rinha-fraud-api:optim-6000-e724a2e
+    image: ghcr.io/bentoplebstguida/rinha-fraud-api:go-388a7ca
     platform: linux/amd64
     container_name: api2
     expose:
@@ -28,7 +28,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.45"
+          cpus: "0.40"
           memory: "140MB"
     networks:
       - fraud-net
@@ -44,7 +44,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.10"
+          cpus: "0.20"
           memory: "70MB"
     networks:
       - fraud-net
